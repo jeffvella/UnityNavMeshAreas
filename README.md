@@ -5,7 +5,6 @@ Self-updating Areas enum for NavMesh in Unity
  - The file **re-writes itself** whenever scripts compile or assets are saved in the editor.
  - Includes a **PropertyDrawer** so that the insepector will use a multiselect flags dropdown.
  - Contains a helper 'AreaMask' class to make working with flags easier.
- - 
 
 ###### Usage Examples
 ```
