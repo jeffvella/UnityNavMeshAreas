@@ -104,30 +104,31 @@ namespace UnityEngine.AI
         }}
 ";
 
+        private static int SkipToLineStartingWith(string pattern, string[] fileLines, int start_index, StringBuilder accumulated)
+        {
+            for (int i = start_index; i < fileLines.Length; i++)
+            {
+                string line = fileLines[i];
+                if (line.Trim().StartsWith(pattern))
+                {
+                    return i;
+                }
+                else if (accumulated != null)
+                {
+                    accumulated.AppendLine(line);
+                }
+            }
+            return -1;
+        }
+
         private static string ReplaceEnumInFile(string enumName, string[] fileLines, string newEnum)
         {
             int enumStartLine = 0, enumEndLine = 0;
             var result = new StringBuilder();
-            for (int i = 0; i < fileLines.Length; i++)
-            {
-                string line = fileLines[i];
-                if (line.Trim().StartsWith("public enum " + enumName))
-                {
-                    enumStartLine = i;
-                    break;
-                }
-                result.AppendLine(line);
-            }
+            enumStartLine = SkipToLineStartingWith("public enum " + enumName, fileLines, 0, result);
             if (enumStartLine > 0)
             {
-                for (int i = enumStartLine + 1; i < fileLines.Length; i++)
-                {
-                    if (fileLines[i].Contains("}"))
-                    {
-                        enumEndLine = i;
-                        break;
-                    }
-                }
+                enumEndLine = SkipToLineStartingWith("}", fileLines, enumStartLine + 1, null);
                 result.Append(newEnum);
                 for (int i = enumEndLine + 1; i < fileLines.Length; i++)
                 {
