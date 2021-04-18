@@ -16,12 +16,19 @@ namespace UnityEngine.AI
 {
     #region Auto-Generated Content
 
+        // NavMeshAgent uses AreaMask.
         [Flags]
         public enum NavMeshAreas
         {
             None = 0,
             Walkable = 1, NotWalkable = 2, Jump = 4, Climb = 8, Blocked = 16, Hole = 32, Edge = 64, Fall = 128, New1 = 256, Stuff = 512, 
             All = ~0,
+        }
+
+        // NavMeshSurface, NavMeshLink, NavMeshModifierVolume, etc. use indexes.
+        public enum NavMeshAreaIndex
+        {
+            Walkable = 0, NotWalkable = 1, Jump = 2, Climb = 3, Blocked = 4, Hole = 5, Edge = 6, Fall = 7, New1 = 8, Stuff = 9, 
         }
 
     #endregion
@@ -33,7 +40,8 @@ namespace UnityEngine.AI
     /// </summary>
     public static class NavMeshAreasGenerator
     {
-        private const string EnumValuesToken = "#EnumValues";
+        private const string IndexValuesToken = "#IndexValues";
+        private const string FlagValuesToken = "#FlagValues";
         private const string HashSettingsKey = "NavMeshAreasHash";
 
         private static void Update([CallerFilePath] string executingFilePath = "")
@@ -66,16 +74,20 @@ namespace UnityEngine.AI
             if (hash == 0)
                 hash = GetAreaHash(areaNames);
 
-            var values = GetAreaEnumValuesAsText(ref areaNames);
-            var newEnumText = ContentTemplate.Replace(EnumValuesToken, values);
+            var text = GetAreaEnumValuesAsText(ref areaNames, as_flags: true);
+            var newEnumText = FlagContentTemplate.Replace(FlagValuesToken, text);
             var output = ReplaceEnumInFile(nameof(NavMeshAreas), File.ReadAllLines(outputPath), newEnumText);
+
+            text = GetAreaEnumValuesAsText(ref areaNames, as_flags: false);
+            newEnumText = IndexContentTemplate.Replace(IndexValuesToken, text);
+            output = ReplaceEnumInFile(nameof(NavMeshAreaIndex), output.Trim().Split(new[]{Environment.NewLine}, StringSplitOptions.None), newEnumText);
 
             CreateScriptAssetWithContent(outputPath, string.Concat(output));
             EditorPrefs.SetInt(HashSettingsKey, hash);
             AssetDatabase.Refresh();
         }
 
-        private static string GetAreaEnumValuesAsText(ref string[] areaNames)
+        private static string GetAreaEnumValuesAsText(ref string[] areaNames, bool as_flags)
         {
             var increment = 0;
             var output = new StringBuilder();
@@ -84,7 +96,11 @@ namespace UnityEngine.AI
             foreach (var name in areaNames)
             {
                 var enumKey = string.Concat(name.Where(char.IsLetterOrDigit));
-                var value = 1 << NavMesh.GetAreaFromName(name);
+                var value = NavMesh.GetAreaFromName(name);
+                if (as_flags)
+                {
+                    value = 1 << value;
+                }
 
                 output.Append(seenKeys.Contains(name)
                     ? $"{(enumKey + increment++)} = {value}, "
@@ -95,39 +111,46 @@ namespace UnityEngine.AI
             return output.ToString();
         }
 
-        private static readonly string ContentTemplate = 
+        private static readonly string FlagContentTemplate =
         $@"        public enum {nameof(NavMeshAreas)}
         {{
             None = 0,
-            {EnumValuesToken}
+            {FlagValuesToken}
             All = ~0,
         }}
 ";
+        private static readonly string IndexContentTemplate =
+        $@"        public enum {nameof(NavMeshAreaIndex)}
+        {{
+            {IndexValuesToken}
+        }}
+";
+
+        private static int SkipToLineStartingWith(string pattern, string[] fileLines, int start_index, StringBuilder accumulated)
+        {
+            for (int i = start_index; i < fileLines.Length; i++)
+            {
+                string line = fileLines[i];
+                if (line.Trim().StartsWith(pattern))
+                {
+                    return i;
+                }
+                else if (accumulated != null)
+                {
+                    accumulated.AppendLine(line);
+                }
+            }
+            return -1;
+        }
 
         private static string ReplaceEnumInFile(string enumName, string[] fileLines, string newEnum)
         {
             int enumStartLine = 0, enumEndLine = 0;
             var result = new StringBuilder();
-            for (int i = 0; i < fileLines.Length; i++)
-            {
-                string line = fileLines[i];
-                if (line.Trim().StartsWith("public enum " + enumName))
-                {
-                    enumStartLine = i;
-                    break;
-                }
-                result.AppendLine(line);
-            }
+            enumStartLine = SkipToLineStartingWith("public enum " + enumName, fileLines, 0, result);
             if (enumStartLine > 0)
             {
-                for (int i = enumStartLine + 1; i < fileLines.Length; i++)
-                {
-                    if (fileLines[i].Contains("}"))
-                    {
-                        enumEndLine = i;
-                        break;
-                    }
-                }
+                enumEndLine = SkipToLineStartingWith("}", fileLines, enumStartLine + 1, null);
                 result.Append(newEnum);
                 for (int i = enumEndLine + 1; i < fileLines.Length; i++)
                 {
