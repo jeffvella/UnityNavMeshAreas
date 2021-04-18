@@ -150,8 +150,26 @@ namespace UnityEngine.AI
             string fullPath = Path.GetFullPath(pathName);
             System.Text.UTF8Encoding encoding = new System.Text.UTF8Encoding(true);
             File.WriteAllText(fullPath, templateContent, encoding);
-            AssetDatabase.ImportAsset(pathName);
-            return AssetDatabase.LoadAssetAtPath(pathName, typeof(UnityEngine.Object));
+            string projectPath = GetPathRelativeToProject(fullPath);
+            AssetDatabase.ImportAsset(projectPath);
+            return AssetDatabase.LoadAssetAtPath(projectPath, typeof(UnityEngine.Object));
+        }
+
+        /// <summary>
+        /// Get a path relative to the project folder suitable for passing to
+        /// AssetDatabase.
+        /// </summary>
+        /// <param name="pathName">the path to make relative</param>
+        /// <returns>a path relative to the project (including "Assets" folder)</returns>
+        private static string GetPathRelativeToProject(string pathName)
+        {
+            string path = Path.GetFullPath(pathName);
+            string project = Path.GetFullPath(Application.dataPath);
+            if (path.StartsWith(project))
+            {
+                path = "Assets" + path.Substring(project.Length);
+            }
+            return path;
         }
 
         /// <summary>
