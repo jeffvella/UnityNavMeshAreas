@@ -19,11 +19,11 @@ namespace UnityEngine.AI
         [Flags]
         public enum NavMeshAreas
         {
-            None = 0,               
+            None = 0,
             Walkable = 1, NotWalkable = 2, Jump = 4, Climb = 8, Blocked = 16, Hole = 32, Edge = 64, Fall = 128, New1 = 256, Stuff = 512, 
             All = ~0,
         }
-        
+
     #endregion
 
 #if UNITY_EDITOR
@@ -98,11 +98,11 @@ namespace UnityEngine.AI
         private static readonly string ContentTemplate = 
         $@"        public enum {nameof(NavMeshAreas)}
         {{
-            None = 0,               
+            None = 0,
             {EnumValuesToken}
             All = ~0,
         }}
-        ";
+";
 
         private static string ReplaceEnumInFile(string enumName, string[] fileLines, string newEnum)
         {
